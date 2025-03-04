@@ -16,7 +16,7 @@ model = ChatOpenAI(api_key=openai_key, model=llm_name)
 client = OpenAI(api_key=openai_key)
 
 
-# ✅ Function to fetch real-time weather data
+# Function to fetch real-time weather data
 def get_current_weather(location, unit="metric"):
     """Fetch live weather data from OpenWeather API"""
     base_url = "http://api.openweathermap.org/data/2.5/weather"
@@ -42,7 +42,7 @@ def get_current_weather(location, unit="metric"):
         return json.dumps({"error": f"Could not fetch weather for {location}"})
 
 
-# ✅ Function Calling Implementation
+# Function Calling Implementation
 def run_conversation():
     messages = [
         {
@@ -117,5 +117,5 @@ def run_conversation():
         return second_response
 
 
-# ✅ Run the conversation
+# Run the conversation
 print(run_conversation().model_dump_json(indent=2))
