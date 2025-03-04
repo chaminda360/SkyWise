@@ -1,0 +1,7 @@
+requests
+openai==1.56.1
+langchain==0.1.6
+pandas==2.2.2
+python-dotenv==1.0.1
+langchain-openai==0.0.5
+streamlit
