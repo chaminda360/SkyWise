@@ -1,9 +1,9 @@
-import os
+import streamlit as st
 import json
+import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from weather_service import WeatherService
-import streamlit as st
 
 # Load environment variables from .env file
 load_dotenv()
@@ -63,6 +63,22 @@ class WeatherAssistant:
                         "required": ["location"],
                     },
                 },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_custom_forecast",
+                    "description": "Get a customizable weather forecast for a given location",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {"type": "string", "description": "City name, e.g., Colombo"},
+                            "days": {"type": "integer", "description": "Number of days for the forecast, up to 5"},
+                            "unit": {"type": "string", "enum": ["celsius", "imperial"]},
+                        },
+                        "required": ["location", "days"],
+                    },
+                },
             }
         ]
 
@@ -78,7 +94,10 @@ class WeatherAssistant:
         tool_calls = response_message.tool_calls
 
         if tool_calls:
-            available_functions = {"get_current_weather": WeatherService.get_current_weather}
+            available_functions = {
+                "get_current_weather": WeatherService.get_current_weather,
+                "get_custom_forecast": WeatherService.get_custom_forecast
+            }
             self.messages.append(response_message)
 
             for tool_call in tool_calls:
@@ -87,30 +106,35 @@ class WeatherAssistant:
                 function_args = json.loads(tool_call.function.arguments)
 
                 if function_to_call:
-                    function_response = function_to_call(
-                        location=function_args.get("location"),
-                        unit=st.session_state.unit,  # Use the selected unit from session state
-                    )
+                    if function_name == "get_custom_forecast":
+                        function_response = function_to_call(
+                            location=function_args.get("location"),
+                            days=function_args.get("days"),
+                            unit=st.session_state.unit,  # Use the selected unit from session state
+                        )
+                    else:
+                        function_response = function_to_call(
+                            location=function_args.get("location"),
+                            unit=st.session_state.unit,  # Use the selected unit from session state
+                        )
 
                     weather_data = json.loads(function_response)
-                    description = weather_data.get("description", "").lower()
 
-                    # Determine primary emoji based on weather description
-                    emoji = next((emoji_mapping[key] for key in emoji_mapping if key in description), "🌤️")
-
-                    # Add secondary emojis based on additional parameters
-                    if weather_data["temperature"] > 30:
-                        emoji += " 🔥"  # Hot temperature
-                    elif weather_data["temperature"] < 0:
-                        emoji += " 🧊"  # Cold temperature
-                    if weather_data["humidity"] > 80:
-                        emoji += " 💦"  # High humidity
-                    if weather_data["wind_speed"] > 15:
-                        emoji += " 🍃"  # Windy conditions
-
-                    # Append emoji to the weather data
-                    weather_data["emoji"] = emoji
-
+                    if function_name == "get_current_weather":
+                        description = weather_data.get("description", "").lower()
+                        # Determine primary emoji based on weather description
+                        emoji = next((emoji_mapping[key] for key in emoji_mapping if key in description), "🌤️")
+                        # Add secondary emojis based on additional parameters
+                        if weather_data["temperature"] > 30:
+                            emoji += " 🔥"  # Hot temperature
+                        elif weather_data["temperature"] < 0:
+                            emoji += " 🧊"  # Cold temperature
+                        if weather_data["humidity"] > 80:
+                            emoji += " 💦"  # High humidity
+                        if weather_data["wind_speed"] > 15:
+                            emoji += " 🍃"  # Windy conditions
+                        # Append emoji to the weather data
+                        weather_data["emoji"] = emoji
                     # Pass the weather data to the LLM for crafting the response
                     self.messages.append(
                         {
@@ -131,12 +155,9 @@ class WeatherAssistant:
 
             # Extract the final response and ensure it includes the emoji
             final_response = response_message.content
-            weather_data = json.loads(self.messages[-1]["content"])
-            emoji = weather_data.get("emoji", "🌤️")
+            if "emoji" in weather_data and use_emojis:
+                final_response += f" {weather_data['emoji']}"
 
-            if use_emojis:
-                return f"{final_response} {emoji}"
-            else:
-                return final_response
+            return final_response
 
         return "Sorry, I couldn't process your request. 😔"
