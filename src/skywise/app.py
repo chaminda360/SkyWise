@@ -26,6 +26,9 @@ def main():
     # Toggle for enabling/disabling emojis
     use_emojis = st.checkbox("Enable Emojis in Responses", value=True)
 
+    # Option to request customizable forecast
+    forecast_days = st.slider("Select number of days for forecast (up to 5):", 1, 5, 1)
+
     # Display history of interactions
     st.subheader("Interaction History")
     for entry in st.session_state.history:
@@ -38,6 +41,8 @@ def main():
             with st.spinner("Fetching weather..."):
                 # Fetch weather information
                 assistant = WeatherAssistant()
+                if forecast_days > 1:
+                    user_question += f" Provide a {forecast_days}-day forecast."
                 response = assistant.ask_weather(user_question, use_emojis)
 
                 # Save interaction to session state
